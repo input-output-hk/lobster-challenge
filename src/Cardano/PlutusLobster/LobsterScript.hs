@@ -4,7 +4,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -21,7 +20,7 @@ module Cardano.PlutusLobster.LobsterScript
   , LobsterParams (..)
   , nftTokenName
   , counterTokenName
-  , finishedTokenName
+  , votesTokenName
   ) where
 
 import           Cardano.Api.Shelley      (PlutusScript (..), PlutusScriptV1)
@@ -41,9 +40,9 @@ data LobsterParams = LobsterParams
     { lpSeed      :: Integer
     , lpNFT       :: AssetClass
     , lpCounter   :: AssetClass
-    , lpFinished  :: AssetClass
-    , lpDeadline  :: POSIXTime
+    , lpVotes     :: AssetClass
     , lpNameCount :: Integer
+    , lpVoteCount :: Integer
     } deriving Show
 
 PlutusTx.makeLift ''LobsterParams
@@ -66,10 +65,10 @@ mkNFTPolicy tn utxo _ ctx = traceIfFalse "UTxO not consumed"   hasUTxO          
         [(_, tn', amt)] -> tn' == tn && amt == 1
         _               -> False
 
-nftTokenName, counterTokenName, finishedTokenName :: TokenName
+nftTokenName, counterTokenName, votesTokenName :: TokenName
 nftTokenName = "LobsterNFT"
 counterTokenName = "LobsterCounter"
-finishedTokenName = "LobsterFinished"
+votesTokenName = "LobsterVotes"
 
 nftPolicy :: TxOutRef -> Scripts.MintingPolicy
 nftPolicy utxo = mkMintingPolicyScript $
@@ -112,17 +111,15 @@ apiOtherMintScript = PlutusScriptSerialised $ SBS.toShort $ LB.toStrict otherScr
 
 mkLobsterValidator :: LobsterParams -> BuiltinData -> BuiltinData -> ScriptContext -> Bool
 mkLobsterValidator lp _ _ ctx =
-    traceIfFalse "NFT missing from input"  (assetClassValueOf inVal  (lpNFT lp)      == 1) &&
-    traceIfFalse "NFT missing from output" (assetClassValueOf outVal (lpNFT lp)      == 1) &&
-    traceIfFalse "already finished"        (assetClassValueOf inVal  (lpFinished lp) == 0) &&
-    if | to (lpDeadline lp) `contains` txValidRange   ->
-            traceIfFalse "must not finish"            (assetClassValueOf outVal  (lpFinished lp) == 0)                       &&
-            traceIfFalse "counter increase too small" (increase >= 1)                                                        &&
-            traceIfFalse "counter increase too large" (increase <= 100)
-       | from (lpDeadline lp) `contains` txValidRange ->
-            traceIfFalse "finshed marker missing"     (assetClassValueOf outVal (lpFinished lp) == 1)                        &&
-            traceIfFalse "wrong counter value"        (newCounter == ((lpSeed lp + oldCounter) `modInteger` lpNameCount lp))
-       | otherwise                                    -> traceError "invalid validity range"
+    traceIfFalse "NFT missing from input"  (oldNFT   == 1)              &&
+    traceIfFalse "NFT missing from output" (newNFT   == 1)              &&
+    traceIfFalse "already finished"        (oldVotes <= lpVoteCount lp) &&
+    traceIfFalse "wrong new votes"         (newVotes == oldVotes + 1)   &&
+    if oldVotes < lpVoteCount lp then
+        traceIfFalse "counter increase too small" (increase >= 1)                                                        &&
+        traceIfFalse "counter increase too large" (increase <= 100)
+    else
+        traceIfFalse "wrong counter value"        (newCounter == ((lpSeed lp + oldCounter) `modInteger` lpNameCount lp))
   where
     ownInput :: TxOut
     ownInput = case findOwnInput ctx of
@@ -138,13 +135,14 @@ mkLobsterValidator lp _ _ ctx =
     inVal = txOutValue ownInput
     outVal = txOutValue ownOutput
 
-    oldCounter, newCounter, increase :: Integer
-    oldCounter = assetClassValueOf inVal (lpCounter lp)
-    newCounter = assetClassValueOf outVal (lpCounter lp)
-    increase = newCounter - oldCounter
-
-    txValidRange :: POSIXTimeRange
-    txValidRange = txInfoValidRange $ scriptContextTxInfo ctx
+    oldNFT, newNFT, oldCounter, newCounter, increase, oldVotes, newVotes :: Integer
+    oldNFT     = assetClassValueOf inVal  $ lpNFT lp
+    newNFT     = assetClassValueOf outVal $ lpNFT lp
+    oldCounter = assetClassValueOf inVal  $ lpCounter lp
+    newCounter = assetClassValueOf outVal $ lpCounter lp
+    oldVotes   = assetClassValueOf inVal  $ lpVotes lp
+    newVotes   = assetClassValueOf outVal $ lpVotes lp
+    increase   = newCounter - oldCounter
 
 data LobsterNaming
 instance Scripts.ValidatorTypes LobsterNaming where

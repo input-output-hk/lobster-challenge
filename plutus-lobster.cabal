@@ -6,6 +6,7 @@ description:            Lobster naming.
 author:                 Lars Brünjes
 maintainer:             lars.bruenjes@iohk.io
 license:                Apache-2.0
+license-file:           LICENSE
 build-type:             Simple
 
 Flag unexpected_thunks
@@ -50,7 +51,6 @@ library
                       , plutus-ledger
                       , plutus-ledger-api
                       , plutus-tx
-                      , plutus-tx-plugin
                       , serialise
 
   ghc-options: -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas

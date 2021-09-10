@@ -1,6 +1,5 @@
 import Cardano.Api                         hiding (TxId)
 import Data.String                         (IsString (..))
-import Ledger
 import Ledger.Value                        (AssetClass (..))
 import Prelude
 import System.Environment                  (getArgs)
@@ -9,20 +8,20 @@ import Cardano.PlutusLobster.LobsterScript
 
 main :: IO ()
 main = do
-    [nftSymbol, otherSymbol, seed', deadline', nameCount'] <- getArgs
-    let seed        = read seed'
-        deadline    = POSIXTime $ read deadline'
-        nft         = AssetClass (fromString nftSymbol, nftTokenName)
-        counter     = AssetClass (fromString otherSymbol, counterTokenName)
-        finished    = AssetClass (fromString otherSymbol, finishedTokenName)
-        nameCount   = read nameCount'
+    [nftSymbol, otherSymbol, seed', nameCount', voteCount'] <- getArgs
+    let seed      = read seed'
+        nft       = AssetClass (fromString nftSymbol,   nftTokenName)
+        counter   = AssetClass (fromString otherSymbol, counterTokenName)
+        votes     = AssetClass (fromString otherSymbol, votesTokenName)
+        nameCount = read nameCount'
+        voteCount = read voteCount'
         lp          = LobsterParams
             { lpSeed      = seed
             , lpNFT       = nft
             , lpCounter   = counter
-            , lpFinished  = finished
-            , lpDeadline  = deadline
+            , lpVotes     = votes
             , lpNameCount = nameCount
+            , lpVoteCount = voteCount
             }
         lobsterFile = "lobster.plutus"
     print lp
