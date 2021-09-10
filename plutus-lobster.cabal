@@ -8,6 +8,7 @@ maintainer:             lars.bruenjes@iohk.io
 license:                Apache-2.0
 license-file:           LICENSE
 build-type:             Simple
+data-files:             ENGivenMale.json
 
 Flag unexpected_thunks
   Description:   Turn on unexpected thunks checks
@@ -73,3 +74,14 @@ executable plutus-lobster
   build-depends:        cardano-api
                       , plutus-ledger
                       , plutus-lobster
+
+executable plutus-lobster-names
+  hs-source-dirs:       app
+  main-is:              plutus-lobster-names.hs
+  other-modules:        Paths_plutus_lobster
+  autogen-modules:      Paths_plutus_lobster
+  ghc-options:          -Wall
+
+  build-depends:        aeson
+                      , base
+                      , bytestring
