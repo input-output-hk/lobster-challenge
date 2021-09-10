@@ -9,6 +9,7 @@ license:                Apache-2.0
 license-file:           LICENSE
 build-type:             Simple
 data-files:             ENGivenMale.json
+extra-source-files:     README.md
 
 Flag unexpected_thunks
   Description:   Turn on unexpected thunks checks
