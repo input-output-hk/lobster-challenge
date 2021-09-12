@@ -10,7 +10,7 @@ export CARDANO_NODE_SOCKET_PATH=node.socket
 bodyFile=lobster-tx-body.01
 outFile=lobster-tx.01
 nftPolicyFile="nft-mint-policy.plutus"
-nftPolicyId=$(./mainnet-policyid.sh $nftPolicyFile)
+nftPolicyId=$(./policyid.sh $nftPolicyFile)
 value="1 $nftPolicyId.LobsterNFT"
 walletAddr=$(cat $2)
 
