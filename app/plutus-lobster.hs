@@ -23,7 +23,7 @@ main = do
             , lpNameCount = nameCount
             , lpVoteCount = voteCount
             }
-        lobsterFile = "lobster.plutus"
+        lobsterFile = "scripts/lobster.plutus"
     print lp
 
     lobsterResult <- writeFileTextEnvelope lobsterFile Nothing $ apiLobsterScript lp
