@@ -19,7 +19,7 @@ We use three distinct native tokens to help us name the lobster:
 
 | Policy                                     | Policy Id                                                  | Token Name       | Purpose                             |
 | ------------------------------------------ | ---------------------------------------------------------- | ---------------- | ----------------------------------- |
-| [script](scripts/nft-mint-policy.plutus)   |                                                            | `LobsterNFT`     | Identifies the relevant UTxO.       |
+| [script](scripts/nft-mint-policy.plutus)   | `cc7888851f0f5aa64c136e0c8fb251e9702f3f6c9efcf3a60a54f419` | `LobsterNFT`     | Identifies the relevant UTxO.       |
 | [script](scripts/other-mint-policy.plutus) | `fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50` | `LobsterCounter` | Stores the current "random" number. |
 | [script](scripts/other-mint-policy.plutus) | `fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50` | `LobsterVotes`   | Counts the number of votes.         |
 
@@ -54,7 +54,7 @@ The validator for the naming contract is paramterized by six parameters:
 We will reveal the "seed", our own "random" contribution, in the end,
 when we finalize the contract.
 
-Using these parameter values, we get a [script](scripts/lobster.pluts) with script address `xxxxxxxxx`.
+Using these parameter values, we get a [script](scripts/lobster.plutus) with script address `addr1w8433zk2shufk42hn4x7zznjjuqwwyfmxffcjszw5l2ulesdt3jff`.
 
 ## Example
 
