@@ -19,7 +19,7 @@ We use three distinct native tokens to help us name the lobster:
 
 | Policy                                     | Policy Id                                                  | Token Name       | Purpose                             |
 | ------------------------------------------ | ---------------------------------------------------------- | ---------------- | ----------------------------------- |
-|                                            |                                                            | `LobsterNFT`     | Identifies the relevant UTxO.       |
+| [script](scripts/nft-mint-policy.plutus)   |                                                            | `LobsterNFT`     | Identifies the relevant UTxO.       |
 | [script](scripts/other-mint-policy.plutus) | `fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50` | `LobsterCounter` | Stores the current "random" number. |
 | [script](scripts/other-mint-policy.plutus) | `fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50` | `LobsterVotes`   | Counts the number of votes.         |
 
@@ -37,6 +37,24 @@ Each time a user interacts with the contract and increases the amount of `Lobste
 The amount of `LobsterVotes` tokens at the script UTxO will go up by one.
 Once 500 people have "voted", voting stops, and we will set the final result with a last transaction,
 which will bring the amount of `LobsterVotes` tokens to its ultimate value of 501.
+
+## Script
+
+The validator for the naming contract is paramterized by six parameters:
+
+| Parameter  | Value                              | Explanation                     ]
+| ---------  | ---------------------------------- | ------------------------------- |
+| Seed       | TO BE REVEALED                     | Our own "random" number.        |
+| NFT        | `LobsterNFT`token (see above)      | Token identifying the UTxO.     |
+| Counter    | `LobsterCounter` token (see above) | Token tracking "random" number. |
+| Votes      | `LobsterVotes` token (see above)   | Token counting votes.           |
+| Name Count | 1219                               | Number of available names.      |
+| Vote Count | 500                                | Number of votes.                |
+
+We will reveal the "seed", our own "random" contribution, in the end,
+when we finalize the contract.
+
+Using these parameter values, we get a [script](scripts/lobster.pluts) with script address `xxxxxxxxx`.
 
 ## Example
 
