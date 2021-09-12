@@ -54,7 +54,7 @@ The validator for the naming contract is paramterized by six parameters:
 We will reveal the "seed", our own "random" contribution, in the end,
 when we finalize the contract.
 
-Using these parameter values, we get a [script](scripts/lobster.pluts) with script address `xxxxxxxxx`.
+Using these parameter values, we get a [script](scripts/lobster.plutus) with script address `addr1w8433zk2shufk42hn4x7zznjjuqwwyfmxffcjszw5l2ulesdt3jff`.
 
 ## Example
 
