@@ -106,6 +106,8 @@ The script expects seven arguments:
  - The new amount of `LobsterCounter` tokens (which must be 1-100 higher than the current amount).
  - The current amount of `LobsterVotes` tokens (which should be less than 500).
 
+I also recorded an [Explainer Video](https://youtu.be/6xEAnMaov3E).
+
 ## Finalization
 
 Once 500 votes have been cast, we will submit a final transaction to get the ultimate result and record it as the final amount of `LobsterCounter` tokens.
