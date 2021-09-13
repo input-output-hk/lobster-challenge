@@ -4,7 +4,7 @@
 #   utxo (wallet)
 #   utxo (lobster)
 #   wallet address file
-#   signinig key file
+#   signing key file
 #   old counter
 #   new counter
 #   old votes
