@@ -8,7 +8,6 @@
 #   old counter
 #   new counter
 #   old votes
-#   new votes
 
 export CARDANO_NODE_SOCKET_PATH=node.socket
 
@@ -20,7 +19,8 @@ otherPolicyFile="other-mint-policy.plutus"
 otherPolicyId=$(./policyid.sh $otherPolicyFile)
 nftValue="1 $nftPolicyId.LobsterNFT"
 counterValue="$6 $otherPolicyId.LobsterCounter"
-votesValue="$8 $otherPolicyId.LobsterVotes"
+newVotes=$(($7+1))
+votesValue="$newVotes $otherPolicyId.LobsterVotes"
 increaseValue="$(($6-$5)) $otherPolicyId.LobsterCounter + 1 $otherPolicyId.LobsterVotes"
 walletAddr=$(cat $3)
 scriptFile=lobster.plutus
@@ -45,7 +45,7 @@ echo "old counter: $5"
 echo "new counter: $6"
 echo "increaseValue: $increaseValue"
 echo "old votes: $7"
-echo "new votes: $8"
+echo "new votes: $newVotes"
 echo
 
 echo "querying protocol parameters"
