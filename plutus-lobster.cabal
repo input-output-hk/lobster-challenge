@@ -53,6 +53,7 @@ library
                       , plutus-ledger
                       , plutus-ledger-api
                       , plutus-tx
+                      , plutus-tx-plugin
                       , serialise
 
   ghc-options: -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
