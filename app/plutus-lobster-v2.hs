@@ -5,7 +5,7 @@ import Prelude
 import System.Environment                    (getArgs)
 
 import Cardano.PlutusLobster.LobsterPolicies
-import Cardano.PlutusLobster.LobsterV1Script
+import Cardano.PlutusLobster.LobsterV2Script
 
 main :: IO ()
 main = do
@@ -24,7 +24,7 @@ main = do
             , lpNameCount = nameCount
             , lpVoteCount = voteCount
             }
-        lobsterFile = "scripts/lobster-v1.plutus"
+        lobsterFile = "scripts/lobster-v2.plutus"
     print lp
 
     lobsterResult <- writeFileTextEnvelope lobsterFile Nothing $ apiLobsterScript lp

@@ -47,6 +47,7 @@ library
 
   exposed-modules:      Cardano.PlutusLobster.LobsterPolicies
                       , Cardano.PlutusLobster.LobsterV1Script
+                      , Cardano.PlutusLobster.LobsterV2Script
 
   build-depends:        bytestring
                       , cardano-api
@@ -72,6 +73,16 @@ executable plutus-lobster-v1
   import:               base, project-config
   hs-source-dirs:       app
   main-is:              plutus-lobster-v1.hs
+  ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
+
+  build-depends:        cardano-api
+                      , plutus-ledger
+                      , plutus-lobster
+
+executable plutus-lobster-v2
+  import:               base, project-config
+  hs-source-dirs:       app
+  main-is:              plutus-lobster-v2.hs
   ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
 
   build-depends:        cardano-api
