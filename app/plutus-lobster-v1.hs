@@ -1,10 +1,11 @@
-import Cardano.Api                         hiding (TxId)
-import Data.String                         (IsString (..))
-import Ledger.Value                        (AssetClass (..))
+import Cardano.Api                           hiding (TxId)
+import Data.String                           (IsString (..))
+import Ledger.Value                          (AssetClass (..))
 import Prelude
-import System.Environment                  (getArgs)
+import System.Environment                    (getArgs)
 
-import Cardano.PlutusLobster.LobsterScript
+import Cardano.PlutusLobster.LobsterPolicies
+import Cardano.PlutusLobster.LobsterV1Script
 
 main :: IO ()
 main = do
