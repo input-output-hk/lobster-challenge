@@ -31,6 +31,7 @@ import           Ledger.Ada
 import qualified PlutusTx
 import           PlutusTx.Builtins        (modInteger)
 import           PlutusTx.Prelude         hiding (Semigroup (..), unless)
+import           Plutus.V1.Ledger.Bytes   (bytes)
 import qualified Plutus.V1.Ledger.Scripts as Plutus
 import           Prelude                  (Show)
 
@@ -79,7 +80,7 @@ apiRequestScript :: LobsterParams -> PlutusScript PlutusScriptV1
 apiRequestScript = PlutusScriptSerialised . requestScriptAsShortBs
 
 expectedDatumHash :: DatumHash
-expectedDatumHash = DatumHash "03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314" -- hash of 0
+expectedDatumHash = DatumHash $ toBuiltin $ bytes "03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314" -- hash of 0
 
 mkLobsterValidator :: Address -> DatumHash -> LobsterParams -> Integer -> BuiltinData -> ScriptContext -> Bool
 mkLobsterValidator addr h lp _ _ ctx
