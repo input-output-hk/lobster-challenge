@@ -49,15 +49,15 @@ PlutusTx.makeLift ''LobsterParams
 
 {- HLINT ignore "Avoid lambda" -}
 
-mkRequestValidator :: LobsterParams -> BuiltinData -> BuiltinData -> ScriptContext -> Bool
+mkRequestValidator :: LobsterParams -> Integer -> Integer -> ScriptContext -> Bool
 mkRequestValidator lp _ _ ctx =
     traceIfFalse "lobster input missing" $
         any (\i -> assetClassValueOf (txOutValue $ txInInfoResolved i) (lpNFT lp) == 1) $ txInfoInputs $ scriptContextTxInfo ctx
 
 data Requesting
 instance Scripts.ValidatorTypes Requesting where
-    type instance DatumType Requesting = BuiltinData
-    type instance RedeemerType Requesting = BuiltinData
+    type instance DatumType Requesting = Integer
+    type instance RedeemerType Requesting = Integer
 
 typedRequestValidator :: LobsterParams -> Scripts.TypedValidator Requesting
 typedRequestValidator lp = Scripts.mkTypedValidator @Requesting
@@ -65,7 +65,7 @@ typedRequestValidator lp = Scripts.mkTypedValidator @Requesting
         `PlutusTx.applyCode` PlutusTx.liftCode lp)
     $$(PlutusTx.compile [|| wrap ||])
   where
-    wrap = Scripts.wrapValidator @BuiltinData @BuiltinData
+    wrap = Scripts.wrapValidator @Integer @Integer
 
 requestValidator :: LobsterParams -> Validator
 requestValidator = Scripts.validatorScript . typedRequestValidator
