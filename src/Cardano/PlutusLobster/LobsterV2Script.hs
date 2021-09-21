@@ -82,20 +82,20 @@ apiRequestScript = PlutusScriptSerialised . requestScriptAsShortBs
 expectedDatumHash :: DatumHash
 expectedDatumHash = DatumHash $ toBuiltin $ bytes "03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314" -- hash of 0
 
-mkLobsterValidator :: Address -> DatumHash -> LobsterParams -> Integer -> BuiltinData -> ScriptContext -> Bool
-mkLobsterValidator addr h lp _ _ ctx
+mkLobsterValidator :: DatumHash -> LobsterParams -> Integer -> BuiltinData -> ScriptContext -> Bool
+mkLobsterValidator h lp _ _ ctx
     | oldNFT == 1 =
-        traceIfFalse "output datum must be zero" (txOutDatumHash ownOutput == Just h)       &&
-        traceIfFalse "NFT missing from output"   (newNFT   == 1)                            &&
-        if | oldVotes < lpVoteCount lp  ->
-                traceIfFalse "wrong new counter" (newCounter == oldCounter + sum requests)  &&
-                traceIfFalse "wrong new votes"   (newVotes   == oldVotes + length requests) &&
-                traceIfFalse "too many votes"    (newVotes   <= lpVoteCount lp)
-           | oldVotes == lpVoteCount lp ->
-                traceIfFalse "wrong new counter" (newCounter == finalCounter)               &&
-                traceIfFalse "wrong new votes"   (newVotes   == 1 + lpVoteCount lp)
+        traceIfFalse "output datum must be zero" (txOutDatumHash ownOutput == Just h)      &&
+        traceIfFalse "NFT missing from output"   (newNFT   == 1)                           &&
+        if | oldVotes < voteCount  ->
+                traceIfFalse "wrong new counter" (newCounter == oldCounter + snd requests) &&
+                traceIfFalse "wrong new votes"   (newVotes   == oldVotes   + fst requests) &&
+                traceIfFalse "too many votes"    (newVotes   <= voteCount)
+           | oldVotes == voteCount ->
+                traceIfFalse "wrong new counter" (newCounter == finalCounter)              &&
+                traceIfFalse "wrong new votes"   (newVotes   == 1 + voteCount)
            | otherwise                  ->
-                traceIfFalse "wrong new counter" (newCounter == oldCounter)                 &&
+                traceIfFalse "wrong new counter" (newCounter == oldCounter)                &&
                 traceIfFalse "wrong new votes"   (newVotes   == oldVotes)
     | otherwise   = True -- If we don't have the UTxO with the NFT, we don't care.
   where
@@ -113,29 +113,38 @@ mkLobsterValidator addr h lp _ _ ctx
     inVal = txOutValue ownInput
     outVal = txOutValue ownOutput
 
-    oldNFT, newNFT, oldCounter, newCounter, oldVotes, newVotes, finalCounter :: Integer
-    oldNFT       = assetClassValueOf inVal  $ lpNFT lp
-    newNFT       = assetClassValueOf outVal $ lpNFT lp
-    oldCounter   = assetClassValueOf inVal  $ lpCounter lp
-    newCounter   = assetClassValueOf outVal $ lpCounter lp
-    oldVotes     = assetClassValueOf inVal  $ lpVotes lp
-    newVotes     = assetClassValueOf outVal $ lpVotes lp
+    oldNFT, newNFT, oldCounter, newCounter, oldVotes, newVotes, finalCounter, voteCount :: Integer
+    oldNFT       = assetClassValueOf inVal  nftAC
+    newNFT       = assetClassValueOf outVal nftAC
+    oldCounter   = assetClassValueOf inVal  counterAC
+    newCounter   = assetClassValueOf outVal counterAC
+    oldVotes     = assetClassValueOf inVal  votesAC
+    newVotes     = assetClassValueOf outVal votesAC
     finalCounter = (lpSeed lp + oldCounter) `modInteger` lpNameCount lp
+    voteCount    = lpVoteCount lp
+
+    nftAC, counterAC, votesAC :: AssetClass
+    nftAC     = lpNFT     lp
+    counterAC = lpCounter lp
+    votesAC   = lpVotes   lp
 
     lovelace :: AssetClass
     lovelace = AssetClass (adaSymbol, adaToken)
 
-    requests :: [Integer]
-    requests = [ c
-               | i <- txInfoInputs $ scriptContextTxInfo ctx
-               , let o = txInInfoResolved i
-               , txOutAddress o == addr
-               , let v = txOutValue o
-               , let l = assetClassValueOf v lovelace
-               , l >= lpFee lp
-               , let c = assetClassValueOf v $ lpCounter lp
-               , c >= 1 && c <= 100 -- vote in valid range 1 - 100
-               ]
+    requests :: (Integer, Integer)
+    requests = foldl f (0, 0) $ txInfoInputs $ scriptContextTxInfo ctx
+      where
+        f :: (Integer, Integer) -> TxInInfo -> (Integer, Integer)
+        f (votes, counter) i =
+          let
+            o = txInInfoResolved i
+            v = txOutValue o
+            l = assetClassValueOf v lovelace
+            c = assetClassValueOf v counterAC
+          in
+            if (l >= lpFee lp) && (assetClassValueOf v nftAC == 0) && (c >= 1) && (c <= 100)
+                then (votes + 1, counter + c)
+                else (votes, counter)
 
 data LobsterNaming
 instance Scripts.ValidatorTypes LobsterNaming where
@@ -145,7 +154,6 @@ instance Scripts.ValidatorTypes LobsterNaming where
 typedLobsterValidator :: LobsterParams -> Scripts.TypedValidator LobsterNaming
 typedLobsterValidator lp = Scripts.mkTypedValidator @LobsterNaming
     ($$(PlutusTx.compile [|| mkLobsterValidator ||])
-        `PlutusTx.applyCode` PlutusTx.liftCode (scriptAddress $ requestValidator lp)
         `PlutusTx.applyCode` PlutusTx.liftCode expectedDatumHash
         `PlutusTx.applyCode` PlutusTx.liftCode lp)
     $$(PlutusTx.compile [|| wrap ||])
