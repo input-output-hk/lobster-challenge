@@ -139,7 +139,7 @@ mkLobsterValidator h lp _ _ ctx
     votesAC   = lpVotes   lp
     lovelace  = AssetClass (adaSymbol, adaToken)
 
-    requests :: (Integer, Integer)                 -- Calculates the number of valid votes and their sum.
+    requests :: (Integer, Integer)                       -- Calculates the number of valid votes and their sum.
     requests = foldr f (0, 0) $ txInfoInputs $ scriptContextTxInfo ctx
       where
         f :: TxInInfo -> (Integer, Integer) -> (Integer, Integer)
