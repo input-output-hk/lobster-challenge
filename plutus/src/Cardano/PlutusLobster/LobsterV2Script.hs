@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -140,15 +141,15 @@ mkLobsterValidator h lp _ _ ctx
     lovelace = AssetClass (adaSymbol, adaToken)
 
     requests :: (Integer, Integer)                 -- Calculates the number of valid votes and their sum.
-    requests = foldl f (0, 0) $ txInfoInputs $ scriptContextTxInfo ctx
+    requests = foldr f (0, 0) $ txInfoInputs $ scriptContextTxInfo ctx
       where
-        f :: (Integer, Integer) -> TxInInfo -> (Integer, Integer)
-        f (votes, counter) i =
+        f :: TxInInfo -> (Integer, Integer) -> (Integer, Integer)
+        f i (!votes, !counter) =
           let
-            o = txInInfoResolved i
-            v = txOutValue o
-            l = assetClassValueOf v lovelace
-            c = assetClassValueOf v counterAC
+            !o = txInInfoResolved i
+            !v = txOutValue o
+            !l = assetClassValueOf v lovelace
+            !c = assetClassValueOf v counterAC
           in
             if (l >= lpFee lp)                  && -- Is the fee included?
                (assetClassValueOf v nftAC == 0) && -- The NFT must not be included. If it was, this would not be a vote, but the state carrying UTxO of the main lobster contract.
