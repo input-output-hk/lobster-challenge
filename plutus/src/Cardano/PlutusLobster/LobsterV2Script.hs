@@ -119,8 +119,8 @@ mkLobsterValidator h lp _ _ ctx
         _   -> traceError "expected exactly one lobster output"
 
     inVal, outVal :: Value
-    inVal = txOutValue ownInput
-    outVal = txOutValue ownOutput
+    !inVal  = txOutValue ownInput
+    !outVal = txOutValue ownOutput
 
     oldNFT, newNFT, oldCounter, newCounter, oldVotes, newVotes, finalCounter, voteCount :: Integer
     oldNFT       = assetClassValueOf inVal  nftAC
@@ -131,14 +131,13 @@ mkLobsterValidator h lp _ _ ctx
     newVotes     = assetClassValueOf outVal votesAC
     finalCounter = (lpSeed lp + oldCounter) `modInteger` lpNameCount lp
     voteCount    = lpVoteCount lp
+    fees         = lpFee lp
 
-    nftAC, counterAC, votesAC :: AssetClass
+    nftAC, counterAC, votesAC, lovelace :: AssetClass
     nftAC     = lpNFT     lp
     counterAC = lpCounter lp
     votesAC   = lpVotes   lp
-
-    lovelace :: AssetClass
-    lovelace = AssetClass (adaSymbol, adaToken)
+    lovelace  = AssetClass (adaSymbol, adaToken)
 
     requests :: (Integer, Integer)                 -- Calculates the number of valid votes and their sum.
     requests = foldr f (0, 0) $ txInfoInputs $ scriptContextTxInfo ctx
@@ -146,15 +145,13 @@ mkLobsterValidator h lp _ _ ctx
         f :: TxInInfo -> (Integer, Integer) -> (Integer, Integer)
         f i (!votes, !counter) =
           let
-            !o = txInInfoResolved i
-            !v = txOutValue o
-            !l = assetClassValueOf v lovelace
+            !v = txOutValue $ txInInfoResolved i
             !c = assetClassValueOf v counterAC
           in
-            if (l >= lpFee lp)                  && -- Is the fee included?
-               (assetClassValueOf v nftAC == 0) && -- The NFT must not be included. If it was, this would not be a vote, but the state carrying UTxO of the main lobster contract.
-               (c >= 1)                         && -- The vote must be at least 1.
-               (c <= 100)                          -- The vote must be at most 100.
+            if (assetClassValueOf v lovelace >= fees) && -- Is the fee included?
+               (assetClassValueOf v nftAC    == 0)    && -- The NFT must not be included. If it was, this would not be a vote, but the state carrying UTxO of the main lobster contract.
+               (c >= 1)                               && -- The vote must be at least 1.
+               (c <= 100)                                -- The vote must be at most 100.
                 then (votes + 1, counter + c)
                 else (votes, counter)
 
