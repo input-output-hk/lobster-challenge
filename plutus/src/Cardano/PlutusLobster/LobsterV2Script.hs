@@ -93,20 +93,20 @@ mkLobsterValidator h lp _ _ ctx
         (txOutDatumHash ownOutput == Just h)              && -- The datum of the "updated" UTxO should be 0.
         (newNFT   == 1)                                   && -- The "updated" UTxO must contain the NFT.
 
-        if | oldVotes < voteCount  ->                                                         -- Is voting still in progress?
+        if | oldVotes < voteCount  ->                        -- Is voting still in progress?
                 (newCounter == oldCounter + snd requests) && -- Is the new counter correct?
                 (newVotes   == oldVotes   + fst requests) && -- Is the new number of votes correct?
                 (newVotes   <= voteCount)                    -- Is the new number of votes <= the maximal number of votes?
 
-           | oldVotes == voteCount ->                                                         -- Is voting finished, but our "secret" number has not yet been added?
+           | oldVotes == voteCount ->                        -- Is voting finished, but our "secret" number has not yet been added?
                 (newCounter == finalCounter)              && -- Has the final result been calculated correctly?
                 (newVotes   == 1 + voteCount)                -- Have the new votes been calculated correctly?
 
-           | otherwise                  ->                                                    -- Is voting finished, and our "secret" number has been added?
+           | otherwise             ->                        -- Is voting finished, and our "secret" number has been added?
                 (newCounter == oldCounter)                && -- Has the final counter value been kept?
                 (newVotes   == oldVotes)                     -- Has the number of votes been kept?
 
-    | otherwise   = True                                                                      -- If we don't have the UTxO with the NFT, we don't care.
+    | otherwise   = True                                     -- If we don't have the UTxO with the NFT, we don't care.
   where
     ownInput :: TxOut
     ownInput = case findOwnInput ctx of
@@ -127,8 +127,8 @@ mkLobsterValidator h lp _ _ ctx
     newNFT       = assetClassValueOf outVal nftAC
     oldCounter   = assetClassValueOf inVal  counterAC
     newCounter   = assetClassValueOf outVal counterAC
-    oldVotes     = assetClassValueOf inVal  votesAC
-    newVotes     = assetClassValueOf outVal votesAC
+    !oldVotes    = assetClassValueOf inVal  votesAC
+    !newVotes    = assetClassValueOf outVal votesAC
     finalCounter = (lpSeed lp + oldCounter) `modInteger` lpNameCount lp
     voteCount    = lpVoteCount lp
     fees         = lpFee lp
@@ -149,11 +149,16 @@ mkLobsterValidator h lp _ _ ctx
             !c = assetClassValueOf v counterAC
           in
             if (assetClassValueOf v lovelace >= fees) && -- Is the fee included?
-               (assetClassValueOf v nftAC    == 0)    && -- The NFT must not be included. If it was, this would not be a vote, but the state carrying UTxO of the main lobster contract.
+               (txInInfoOutRef i /= ownRef)           && -- This must be a vote, not the state carrying UTxO we are currently validating.
                (c >= 1)                               && -- The vote must be at least 1.
                (c <= 100)                                -- The vote must be at most 100.
                 then (votes + 1, counter + c)
                 else (votes, counter)
+
+    ownRef :: TxOutRef
+    ownRef = case scriptContextPurpose ctx of
+        Spending ref -> ref
+        _            -> error ()
 
 data LobsterNaming
 instance Scripts.ValidatorTypes LobsterNaming where
