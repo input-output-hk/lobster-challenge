@@ -54,9 +54,7 @@ PlutusTx.makeLift ''LobsterParams
 {- HLINT ignore "Avoid lambda" -}
 
 mkRequestValidator :: LobsterParams -> Integer -> Integer -> ScriptContext -> Bool
-mkRequestValidator lp _ _ ctx =
-    traceIfFalse "lobster input missing" $
-        any (\i -> assetClassValueOf (txOutValue $ txInInfoResolved i) (lpNFT lp) == 1) $ txInfoInputs $ scriptContextTxInfo ctx
+mkRequestValidator lp _ _ ctx = any (\i -> assetClassValueOf (txOutValue $ txInInfoResolved i) (lpNFT lp) == 1) $ txInfoInputs $ scriptContextTxInfo ctx
     -- Check whether the NFT is present in an input of the transaction beeing validated. That NFT "sits" in the state carrying UTxO of the main lobster contract,
     -- We can therefore be sure that the main lobster validator will be executed.
 
@@ -90,22 +88,22 @@ expectedDatumHash = DatumHash $ toBuiltin $ bytes "03170a2e7597b7b7e3d84c05391d1
 
 mkLobsterValidator :: DatumHash -> LobsterParams -> Integer -> BuiltinData -> ScriptContext -> Bool
 mkLobsterValidator h lp _ _ ctx
-    | oldNFT == 1 =                                                                           -- Are we validating the "special" UTxO carrying the state?
-        traceIfFalse "output datum must be zero" (txOutDatumHash ownOutput == Just h)      && -- The datum of the "updated" UTxO should be 0.
-        traceIfFalse "NFT missing from output"   (newNFT   == 1)                           && -- The "updated" UTxO must contain the NFT.
+    | oldNFT == 1 =                                          -- Are we validating the "special" UTxO carrying the state?
+        (txOutDatumHash ownOutput == Just h)              && -- The datum of the "updated" UTxO should be 0.
+        (newNFT   == 1)                                   && -- The "updated" UTxO must contain the NFT.
 
         if | oldVotes < voteCount  ->                                                         -- Is voting still in progress?
-                traceIfFalse "wrong new counter" (newCounter == oldCounter + snd requests) && -- Is the new counter correct?
-                traceIfFalse "wrong new votes"   (newVotes   == oldVotes   + fst requests) && -- Is the new number of votes correct?
-                traceIfFalse "too many votes"    (newVotes   <= voteCount)                    -- Is the new number of votes <= the maximal number of votes?
+                (newCounter == oldCounter + snd requests) && -- Is the new counter correct?
+                (newVotes   == oldVotes   + fst requests) && -- Is the new number of votes correct?
+                (newVotes   <= voteCount)                    -- Is the new number of votes <= the maximal number of votes?
 
            | oldVotes == voteCount ->                                                         -- Is voting finished, but our "secret" number has not yet been added?
-                traceIfFalse "wrong new counter" (newCounter == finalCounter)              && -- Has the final result been calculated correctly?
-                traceIfFalse "wrong new votes"   (newVotes   == 1 + voteCount)                -- Have the new votes been calculated correctly?
+                (newCounter == finalCounter)              && -- Has the final result been calculated correctly?
+                (newVotes   == 1 + voteCount)                -- Have the new votes been calculated correctly?
 
            | otherwise                  ->                                                    -- Is voting finished, and our "secret" number has been added?
-                traceIfFalse "wrong new counter" (newCounter == oldCounter)                && -- Has the final counter value been kept?
-                traceIfFalse "wrong new votes"   (newVotes   == oldVotes)                     -- Has the number of votes been kept?
+                (newCounter == oldCounter)                && -- Has the final counter value been kept?
+                (newVotes   == oldVotes)                     -- Has the number of votes been kept?
 
     | otherwise   = True                                                                      -- If we don't have the UTxO with the NFT, we don't care.
   where
