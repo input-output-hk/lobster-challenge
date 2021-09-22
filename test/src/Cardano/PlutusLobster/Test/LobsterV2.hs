@@ -15,10 +15,8 @@
 module Cardano.PlutusLobster.Test.LobsterV2 where
 
 import           Control.Monad                         hiding (fmap)
-import           Control.Monad.Freer.Extras            as Extras
 import           Data.Default                          (Default (..))
 import qualified Data.Map                              as Map
-import           Data.Monoid                           (Last (..))
 import           Data.Text                             (Text)
 import           Ledger
 import           Ledger.Ada                            as Ada
@@ -29,7 +27,7 @@ import           Plutus.Contract                       as Contract
 import           Plutus.Contract.Trace                 (InitialDistribution)
 import           Plutus.Trace.Emulator                 as Emulator
 import           PlutusTx.Prelude                      hiding (Semigroup(..), unless)
-import           Prelude                               (IO, Semigroup(..), Show (..), String, undefined)
+import           Prelude                               (IO, Semigroup(..), Show (..), String)
 import           Wallet.Emulator.Wallet
 
 import           Cardano.PlutusLobster.LobsterPolicies
@@ -37,11 +35,22 @@ import           Cardano.PlutusLobster.LobsterV2Script
 
 deployLobster :: LobsterParams -> Contract () EmptySchema Text ()
 deployLobster lp = do
-    let nft = assetClassValue (lpNFT lp) 1
-        c   = Constraints.mustPayToTheScript 0 nft
+    let nft     = assetClassValue (lpNFT lp) 1
+        c       = Constraints.mustPayToTheScript 0 nft
     ledgerTx <- submitTxConstraints (typedLobsterValidator lp) c
     awaitTxConfirmed $ txId ledgerTx
     Contract.logInfo @String "deployed lobster"
+
+vote :: LobsterParams -> Integer -> Contract () EmptySchema Text ()
+vote lp v = do
+    let counter = assetClassValue (lpCounter lp) v
+        c       = Constraints.mustPayToTheScript 0 (counter <> lovelaceValueOf (lpFee lp)) <>
+                  Constraints.mustMintValue counter
+        lookups = Constraints.typedValidatorLookups (typedRequestValidator lp) <>
+                  Constraints.mintingPolicy otherPolicy
+    ledgerTx <- submitTxConstraintsWith lookups c
+    awaitTxConfirmed $ txId ledgerTx
+    Contract.logInfo $ "voted " ++ show v
 
 test :: IO ()
 test = runEmulatorTraceIO' def emCfg myTrace
@@ -73,6 +82,10 @@ myTrace = do
                 , lpVotes     = AssetClass (otherSymbol, votesTokenName)
                 }
     _ <- activateContractWallet (knownWallet 1) $ deployLobster lp
+    void $ Emulator.waitNSlots 1
+
+    forM_ [2 .. 4] $ \w ->
+        activateContractWallet (knownWallet w) $ vote lp 17
     void $ Emulator.waitNSlots 1
 
 nftAC :: AssetClass
