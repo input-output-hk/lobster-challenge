@@ -19,6 +19,7 @@ module Cardano.PlutusLobster.LobsterPolicies
   , nftTokenName
   , counterTokenName
   , votesTokenName
+  , otherPolicy
   ) where
 
 import           Cardano.Api.Shelley   (PlutusScript (..), PlutusScriptV1)

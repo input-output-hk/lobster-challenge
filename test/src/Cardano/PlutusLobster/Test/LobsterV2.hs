@@ -14,20 +14,72 @@
 
 module Cardano.PlutusLobster.Test.LobsterV2 where
 
-import           Control.Monad              hiding (fmap)
-import           Control.Monad.Freer.Extras as Extras
-import           Data.Default               (Default (..))
-import qualified Data.Map                   as Map
-import           Data.Monoid                (Last (..))
-import           Data.Text                  (Text)
+import           Control.Monad                         hiding (fmap)
+import           Control.Monad.Freer.Extras            as Extras
+import           Data.Default                          (Default (..))
+import qualified Data.Map                              as Map
+import           Data.Monoid                           (Last (..))
+import           Data.Text                             (Text)
 import           Ledger
-import           Ledger.Value               as Value
-import           Ledger.Ada                 as Ada
-import           Plutus.Contract            as Contract
-import           Plutus.Trace.Emulator      as Emulator
-import           PlutusTx.Prelude           hiding (Semigroup(..), unless)
-import           Prelude                    (IO, Semigroup(..), Show (..))
+import           Ledger.Ada                            as Ada
+import           Ledger.Constraints                    as Constraints
+import           Ledger.Scripts                        as Scripts
+import           Ledger.Value                          as Value
+import           Plutus.Contract                       as Contract
+import           Plutus.Contract.Trace                 (InitialDistribution)
+import           Plutus.Trace.Emulator                 as Emulator
+import           PlutusTx.Prelude                      hiding (Semigroup(..), unless)
+import           Prelude                               (IO, Semigroup(..), Show (..), String, undefined)
 import           Wallet.Emulator.Wallet
+
+import           Cardano.PlutusLobster.LobsterPolicies
+import           Cardano.PlutusLobster.LobsterV2Script
+
+deployLobster :: LobsterParams -> Contract () EmptySchema Text ()
+deployLobster lp = do
+    let nft = assetClassValue (lpNFT lp) 1
+        c   = Constraints.mustPayToTheScript 0 nft
+    ledgerTx <- submitTxConstraints (typedLobsterValidator lp) c
+    awaitTxConfirmed $ txId ledgerTx
+    Contract.logInfo @String "deployed lobster"
+
+test :: IO ()
+test = runEmulatorTraceIO' def emCfg myTrace
+  where
+    emCfg :: EmulatorConfig
+    emCfg = EmulatorConfig
+        { _initialChainState = Left initDist
+        , _slotConfig        = def
+        , _feeConfig         = def
+        }
+
+    initDist :: InitialDistribution
+    initDist = Map.fromList
+        [ (knownWallet 1, Ada.lovelaceValueOf 100_000_000 <> assetClassValue nftAC 1)
+        , (knownWallet 2, Ada.lovelaceValueOf 100_000_000)
+        , (knownWallet 3, Ada.lovelaceValueOf 100_000_000)
+        , (knownWallet 4, Ada.lovelaceValueOf 100_000_000)
+        ]
+
+myTrace :: EmulatorTrace ()
+myTrace = do
+    let lp = LobsterParams
+                { lpSeed      = 42
+                , lpNameCount = 100
+                , lpVoteCount = 10
+                , lpFee       = 1_000_000
+                , lpNFT       = nftAC
+                , lpCounter   = AssetClass (otherSymbol, counterTokenName)
+                , lpVotes     = AssetClass (otherSymbol, votesTokenName)
+                }
+    _ <- activateContractWallet (knownWallet 1) $ deployLobster lp
+    void $ Emulator.waitNSlots 1
+
+nftAC :: AssetClass
+nftAC = AssetClass ("ff", nftTokenName)
+
+otherSymbol :: CurrencySymbol
+otherSymbol = mpsSymbol $ Scripts.mintingPolicyHash otherPolicy
 
 {-
 import           Week06.Oracle.Core

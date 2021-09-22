@@ -18,6 +18,7 @@ module Cardano.PlutusLobster.LobsterV2Script
   ( apiLobsterScript
   , apiRequestScript
   , LobsterParams (..)
+  , typedLobsterValidator
   ) where
 
 import           Cardano.Api.Shelley      (PlutusScript (..), PlutusScriptV1)
