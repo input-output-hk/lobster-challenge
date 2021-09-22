@@ -1,3 +1,4 @@
 plutus/dist-newstyle/
 test/dist-newstyle/
+test/tmp/
 scripts/*.plutus

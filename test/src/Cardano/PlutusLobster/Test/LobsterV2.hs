@@ -27,6 +27,7 @@ import           Ledger.Value                          as Value
 import           Plutus.Contract                       as Contract
 import           Plutus.Contract.Trace                 (InitialDistribution)
 import           Plutus.Trace.Emulator                 as Emulator
+import           Plutus.Trace.Emulator.Extract
 import           Plutus.V1.Ledger.Api                  (toBuiltinData)
 import           PlutusTx.Prelude                      hiding (Semigroup(..), mapMaybe, unless)
 import           Prelude                               (IO, Semigroup(..), Show (..), String)
@@ -134,6 +135,15 @@ process lp = do
 test :: IO ()
 test = runEmulatorTraceIO' def emCfg myTrace
 
+writeScripts :: IO ()
+writeScripts = void $ writeScriptsTo sc "lobster" myTrace emCfg
+  where
+    sc :: ScriptsConfig
+    sc = ScriptsConfig
+            { scPath    = "./tmp"
+            , scCommand = Scripts UnappliedValidators
+            }
+
 emCfg :: EmulatorConfig
 emCfg = EmulatorConfig
     { _initialChainState = Left initDist
@@ -174,7 +184,7 @@ myTrace = do
     void $ Emulator.waitNSlots 1
 
 nftAC, lovelaceAC :: AssetClass
-nftAC      = AssetClass ("ff", nftTokenName)
+nftAC      = AssetClass ("ecf23d5362dcc92565135509e9a9d345a8c6add3b0fa0487707088ae", nftTokenName)
 lovelaceAC = AssetClass (adaSymbol, adaToken)
 
 otherSymbol :: CurrencySymbol
