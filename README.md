@@ -5,7 +5,7 @@
 Charles has a lobster, but the poor creature does not yet have a name.
 Let's use a simple Plutus Smart Contract on Cardano to help Charles find a name for his lobster!
 
-We start with a [list of names](names.md) and a "secret random" number, which we will only reveal in the end.
+We start with a [list of names](plutus/names.md) and a "secret random" number, which we will only reveal in the end.
 Then we need the Community's help! We need 500 Community members who are willing to help name the lobster by
 creating transactions which will add their own "random" number (from 1 to 100) to the current total.
 
@@ -116,7 +116,7 @@ We can't "cheat" at this step, because the Plutus contract has been paramterized
 
 ## Code
 
-You can look at the Plutus code [here](src/Cardano/PlutusLobster/LobsterScript.hs),
+You can look at the Plutus code [here](plutus/src/Cardano/PlutusLobster/LobsterScript.hs),
 where you will find the minting policies for the used native tokens and the validator enforcing the contract logic.
 
 You can build the code with `cabal build`.
