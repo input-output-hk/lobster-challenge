@@ -116,7 +116,7 @@ We can't "cheat" at this step, because the Plutus contract has been paramterized
 
 ## Code
 
-You can look at the Plutus code [here](plutus/src/Cardano/PlutusLobster/LobsterScript.hs),
+You can look at the Plutus code [here](plutus/src/Cardano/PlutusLobster/LobsterV1Script.hs),
 where you will find the minting policies for the used native tokens and the validator enforcing the contract logic.
 
 You can build the code with `cabal build`.
