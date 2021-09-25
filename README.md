@@ -120,3 +120,11 @@ You can look at the Plutus code [here](src/Cardano/PlutusLobster/LobsterScript.h
 where you will find the minting policies for the used native tokens and the validator enforcing the contract logic.
 
 You can build the code with `cabal build`.
+
+## Result
+
+The 500 votes are in! The final counter after 500 votes was 22933. Adding our own "random" number, which was 582757474857012117487873, gives 582757474857012117510806.
+Taking the remainder after division by 1219, the number of potential names, gives __522__.
+Looking into the [list of names](names.md), we see that this index points to the name __Logan__.
+
+Charles' lobster finally has his name!
