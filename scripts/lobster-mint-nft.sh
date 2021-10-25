@@ -35,13 +35,17 @@ echo
     --tx-in $1 \
     --tx-in-collateral $1 \
     --tx-out "$walletAddr + 1724100 lovelace + $value" \
-    --tx-out-datum-hash 45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0 \
     --mint "$value" \
     --mint-script-file $nftPolicyFile \
     --mint-redeemer-value [] \
     --change-address $walletAddr \
     --protocol-params-file mainnet-protocol-parameters.json \
     --out-file $bodyFile
+
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    exit $retVal
+fi
 
 echo "saved transaction to $bodyFile"
 
@@ -51,11 +55,21 @@ echo "saved transaction to $bodyFile"
     --mainnet \
     --out-file $outFile
 
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    exit $retVal
+fi
+
 echo "signed transaction and saved as $outFile"
 
 ./cardano-cli transaction submit \
     --mainnet \
     --tx-file $outFile
+
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    exit $retVal
+fi
 
 echo "submitted transaction"
 
