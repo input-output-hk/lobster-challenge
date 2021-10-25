@@ -7,7 +7,6 @@
 #   signinig key file
 #   old counter
 #   new counter
-#   old votes
 
 export CARDANO_NODE_SOCKET_PATH=node.socket
 
@@ -19,11 +18,11 @@ otherPolicyFile="other-mint-policy.plutus"
 otherPolicyId=$(./policyid.sh $otherPolicyFile)
 nftValue="1 $nftPolicyId.LobsterNFT"
 counterValue="$6 $otherPolicyId.LobsterCounter"
-newVotes=$(($7+1))
-votesValue="$newVotes $otherPolicyId.LobsterVotes"
-increaseValue="$(($6-$5)) $otherPolicyId.LobsterCounter + 1 $otherPolicyId.LobsterVotes"
+increaseValue="$(($6-$5)) $otherPolicyId.LobsterCounter"
+invalidBefore=$(./mainnet-current-slot.sh)
+invalidHereafter=$(($invalidBefore+120))
 walletAddr=$(cat $3)
-scriptFile=lobster.plutus
+scriptFile=lobster-deadline.plutus
 scriptAddr=$(./mainnet-script-address.sh $scriptFile)
 
 echo "wallet utxo: $1"
@@ -36,7 +35,6 @@ echo "otherPolicyfile: $otherPolicyFile"
 echo "otherPolicyid: $otherPolicyId"
 echo "nftValue: $nftValue"
 echo "counterValue: $counterValue"
-echo "votesValue: $votesValue"
 echo "walletAddress: $walletAddr"
 echo "scriptFile: $scriptFile"
 echo "scriptAddress: $scriptAddr"
@@ -44,8 +42,8 @@ echo "signing key file: $4"
 echo "old counter: $5"
 echo "new counter: $6"
 echo "increaseValue: $increaseValue"
-echo "old votes: $7"
-echo "new votes: $newVotes"
+echo "invalidBefore: $invalidBefore"
+echo "invalidHereafter: $invalidHereafter"
 echo
 
 echo "querying protocol parameters"
@@ -59,17 +57,24 @@ echo
     --tx-in $1 \
     --tx-in $2 \
     --tx-in-script-file $scriptFile \
-    --tx-in-datum-value [] \
-    --tx-in-redeemer-value [] \
+    --tx-in-datum-value 0 \
+    --tx-in-redeemer-value 0 \
     --tx-in-collateral $1 \
-    --tx-out "$scriptAddr + 2034438 lovelace + $nftValue + $counterValue + $votesValue" \
-    --tx-out-datum-hash 45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0 \
+    --tx-out "$scriptAddr + 1930992 lovelace + $nftValue + $counterValue" \
+    --tx-out-datum-hash 03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314 \
     --mint "$increaseValue" \
     --mint-script-file $otherPolicyFile \
     --mint-redeemer-value [] \
     --change-address $walletAddr \
     --protocol-params-file mainnet-protocol-parameters.json \
+    --invalid-before $invalidBefore \
+    --invalid-hereafter $invalidHereafter \
     --out-file $bodyFile
+
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    exit $retVal
+fi
 
 echo "saved transaction to $bodyFile"
 
@@ -79,11 +84,21 @@ echo "saved transaction to $bodyFile"
     --mainnet \
     --out-file $outFile
 
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    exit $retVal
+fi
+
 echo "signed transaction and saved as $outFile"
 
 ./cardano-cli transaction submit \
     --mainnet \
     --tx-file $outFile
+
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    exit $retVal
+fi
 
 echo "submitted transaction"
 
