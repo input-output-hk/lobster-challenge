@@ -6,10 +6,7 @@ description:            Lobster naming.
 author:                 Lars Brünjes
 maintainer:             lars.bruenjes@iohk.io
 license:                Apache-2.0
-license-file:           LICENSE
 build-type:             Simple
-data-files:             ENGivenMale.json
-extra-source-files:     README.md
 
 Flag unexpected_thunks
   Description:   Turn on unexpected thunks checks
@@ -45,7 +42,9 @@ library
 
   hs-source-dirs:       src
 
-  exposed-modules:      Cardano.PlutusLobster.LobsterScript
+  exposed-modules:      Cardano.PlutusLobster.LobsterPolicies
+                      , Cardano.PlutusLobster.LobsterDeadlineScript
+                      , Cardano.PlutusLobster.LobsterVoteCountScript
 
   build-depends:        bytestring
                       , cardano-api
@@ -67,10 +66,20 @@ executable plutus-lobster-tokens
                       , plutus-ledger
                       , plutus-lobster
 
-executable plutus-lobster
+executable plutus-lobster-deadline
   import:               base, project-config
   hs-source-dirs:       app
-  main-is:              plutus-lobster.hs
+  main-is:              plutus-lobster-deadline.hs
+  ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
+
+  build-depends:        cardano-api
+                      , plutus-ledger
+                      , plutus-lobster
+
+executable plutus-lobster-vote-count
+  import:               base, project-config
+  hs-source-dirs:       app
+  main-is:              plutus-lobster-vote-count.hs
   ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
 
   build-depends:        cardano-api

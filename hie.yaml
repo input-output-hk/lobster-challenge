@@ -2,9 +2,11 @@ cradle:
   cabal:
     - path: "./src"
       component: "lib:plutus-lobster"
-    - path: "./app/plutus-lobster.hs"
-      component: "exe:plutus-lobster"
+    - path: "./app/plutus-lobster-deadline.hs"
+      component: "exe:plutus-lobster-deadline"
     - path: "./app/plutus-lobster-names.hs"
       component: "exe:plutus-lobster-names"
     - path: "./app/plutus-lobster-tokens.hs"
       component: "exe:plutus-lobster-tokens"
+    - path: "./app/plutus-lobster-vote-count.hs"
+      component: "exe:plutus-lobster-vote-count"

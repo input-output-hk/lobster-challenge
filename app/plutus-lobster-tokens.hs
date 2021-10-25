@@ -1,18 +1,18 @@
-import Cardano.Api                         hiding (TxId)
-import Data.String                         (IsString (..))
+import Cardano.Api                           hiding (TxId)
+import Data.String                           (IsString (..))
 import Ledger
-import Ledger.Bytes                        (getLedgerBytes)
+import Ledger.Bytes                          (getLedgerBytes)
 import Prelude
-import System.Environment                  (getArgs)
+import System.Environment                    (getArgs)
 
-import Cardano.PlutusLobster.LobsterScript
+import Cardano.PlutusLobster.LobsterPolicies
 
 main :: IO ()
 main = do
     [utxo'] <- getArgs
     let utxo            = parseUTxO utxo'
-        nftPolicyFile   = "scripts/nft-mint-policy.plutus"
-        otherPolicyFile = "scripts/other-mint-policy.plutus"
+        nftPolicyFile   = "nft-mint-policy.plutus"
+        otherPolicyFile = "other-mint-policy.plutus"
 
     nftPolicyResult <- writeFileTextEnvelope nftPolicyFile Nothing $ apiNFTMintScript utxo
     case nftPolicyResult of
