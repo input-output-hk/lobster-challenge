@@ -13,6 +13,9 @@ In the end, we will reveal our own "secret random" number, add it to the total p
 and use the result (after taking the remainder after division by the number of available names) as an index
 into the list of names to pick the pumpkin name.
 
+This spooky pumpkin challenge is based on the "lobster challenge", which we ran to celebrate our successful Alonzo hardfork event.
+For this reason, the term "lobster" still appears all over the place.
+
 ## Native Tokens
 
 We use three distinct native tokens to help us name the pumpkin:
@@ -31,7 +34,7 @@ The second one, `LobsterCounter`, stores the current "random" number. It starts 
 and each "vote" can add a number of tokens between 1 and 100.
 Once the deadline (Thursday, Ocober 28, 2021, 6PM GMT) has passed, we add our own secret number, which we picked before deploying the contract and which is a parameter to the contract and hence encoded in the script address. Finally we take the rest of dividing the sum by the number of names in the list of possible names.
 This will be the final amount of `LobsterCounter` tokens "sitting" at the script address, and it will indicate the index of the chosen pumpkin name.
-The fact that this last step has been performed will be indicated by the presence of one coint of the `LobsterFinished` toekn.
+The fact that this last step has been performed will be indicated by the presence of one coint of the `LobsterFinished` token.
 
 ## Script
 
