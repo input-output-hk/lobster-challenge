@@ -99,6 +99,10 @@ The script expects six arguments:
  - The current amount of `LobsterCounter` tokens.
  - The new amount of `LobsterCounter` tokens (which must be 1-100 higher than the current amount).
 
+To get the current script UTxO and the current amount of `LobsterCounter` tokens, you can use [this](scripts/mainnet-utxo-at.sh) Bash script,
+which expects the contract address `addr1w8ydgw5twuk724uh4jcmjsflkerwj9wvgeneuku577w9a4s7avmxg` as argument and prints all UTxO's at that address to the console.
+To identify the right UTxO, look for the one containind the `LobsterNFT` token!
+
 ## Finalization
 
 Once the deadline has been reached, we will submit a final transaction to get the ultimate result and record it as the final amount of `LobsterCounter` tokens.
