@@ -118,3 +118,11 @@ You can look at the Plutus code [here](src/Cardano/PlutusLobster/LobsterDeadline
 where you will find the validator enforcing the contract logic and the minting policies for the used native tokens.
 
 You can build the code with `cabal build`.
+
+## Result
+
+When the deadline was reached, there were __397__ `LobsterCounter` tokens.
+Adding our seed __582757474857012117487873__ and taking the remainder after division by 1219 gives __1147__.
+Looking up the name with index 1147 in the list of names results in the name __Malik__ for the spooky pumpkin!
+
+Thank you all for participating!
