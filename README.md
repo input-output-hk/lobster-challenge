@@ -38,10 +38,10 @@ The overall architecture for this new version of the lobster contract is as foll
  - The lobster contract is deployed without any counter tokens.
 
 ### Vote Submission
-  - The **_OtherPolicy_** minting script is used to mint counter tokens (representing votes) to be submitted to the user's public key address. This script checks that the proper counter token amount is minted, that the voting deadline is still valid and that the fees are sufficient. It also checks that the minted tokens are properly submitted to the voter's public key address and that a proper UTXO is created at the **__request_** script address (see below).
+  - The **_OtherPolicy_** minting script is used to mint counter tokens (representing votes) to be submitted to the user's public key address. Note that counter tokens are minted when redeemer `MintCounters` is passed on as argument to the script. This script checks that the proper counter token amount is minted, that the voting deadline is still valid and that the fees are sufficient. It also checks that the minted tokens are properly submitted to the voter's public key address and that a proper UTXO is created at the **__request_** script address (see below).
   - The **_ticketPolicy_** minting script is used to mint a single ticket token to be used when submitting votes. Note that the token name is set to the public key hash of the submitter. This is enforced by the script when the ticket token is minted.
   - For the lobster contract, the batcher fees are split into two categories and are referred respectively as **_submit fees_** and **_collect fees_**. The _submit fees_ are directly sent to the users's public key address together with the counter and ticket tokens. As for the _collect fees_ they are locked at the **_request_** script as described below
-  - To notify a pending vote, the public key hash of the user together with the _collect fees_ are sent to the **_request_** script.
+  - To notify a pending vote, the public key hash of the voter and the **_collect fees_** are sent to the **_request_** script.
 
 ### Vote Processing
   - The batcher inspects the UTXOs sitting at the **_request_** script address to collect the counter and ticket tokens at the voters' public key addresses and to build the aggregated transaction. Note that if no counter token (respectively ticket token) is present at the corresponding public key address or the **_submit fees_** are insufficient, the vote request is considered as void.
