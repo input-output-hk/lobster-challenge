@@ -51,7 +51,7 @@ The overall architecture for this new version of the lobster contract is as foll
       - The NFT lobster token sits at the script output;
       - The batcher has signed the aggregated transaction;
       - Each consumed UTXO having counter tokens also has an associated ticket token containing the public key hash of the voter (i.e., pub key hash referenced by the UTXO);
-      - The number of counter tokens sitting at the script output includes the tailled votes; and
+      - The number of counter tokens sitting at the script output includes the tallied votes; and
       - Voting deadline is still valid
    - The ticket tokens for the processed votes are collected by the batcher for claiming the additional fees sitting at the **_request_** script.
 
