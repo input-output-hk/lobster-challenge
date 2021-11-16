@@ -45,10 +45,8 @@ library
 
   hs-source-dirs:       src
 
-  -- exposed-modules:      Cardano.PlutusLobster.LobsterPolicies
-  --                     , Cardano.PlutusLobster.LobsterScript
-
-  exposed-modules:     Cardano.PlutusLobster.LobsterScript
+  exposed-modules:      Cardano.PlutusLobster.LobsterPolicies
+                      , Cardano.PlutusLobster.LobsterScript
 
   build-depends:        bytestring
                       , cardano-api
@@ -72,82 +70,23 @@ executable plutus-lobster-tokens
                       , plutus-ledger
                       , plutus-lobster
 
+executable plutus-lobster
+  import:               base, project-config
+  hs-source-dirs:       app
+  main-is:              plutus-lobster.hs
+  ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
 
--- executable plutus-lobster-tokens-v4
---   import:               base, project-config
---   hs-source-dirs:       app
---   main-is:              plutus-lobster-tokens-v4.hs
---   ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
---   build-depends:        cardano-api
---                       , plutus-ledger
---                       , plutus-lobster
+  build-depends:        cardano-api
+                      , plutus-ledger
+                      , plutus-lobster
 
--- executable plutus-lobster-v1
---   import:               base, project-config
---   hs-source-dirs:       app
---   main-is:              plutus-lobster-v1.hs
---   ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
+executable plutus-lobster-names
+  hs-source-dirs:       app
+  main-is:              plutus-lobster-names.hs
+  other-modules:        Paths_plutus_lobster
+  autogen-modules:      Paths_plutus_lobster
+  ghc-options:          -Wall
 
---   build-depends:        cardano-api
---                       , plutus-ledger
---                       , plutus-lobster
-
--- executable plutus-lobster-v2
---   import:               base, project-config
---   hs-source-dirs:       app
---   main-is:              plutus-lobster-v2.hs
---   ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
-
---   build-depends:        cardano-api
---                       , plutus-ledger
---                       , plutus-lobster
-
--- executable plutus-lobster-v4
---   import:               base, project-config
---   hs-source-dirs:       app
---   main-is:              plutus-lobster-v4.hs
---   ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
-
---   build-depends:        cardano-api
---                       , plutus-ledger
---                       , plutus-lobster
-
--- executable plutus-lobster-names
---   hs-source-dirs:       app
---   main-is:              plutus-lobster-names.hs
---   other-modules:        Paths_plutus_lobster
---   autogen-modules:      Paths_plutus_lobster
---   ghc-options:          -Wall
-
---   build-depends:        aeson
---                       , base
---                       , bytestring
-
--- executable pubkeyhash-json-encoder
---   import:               base, project-config
---   hs-source-dirs:       app
---   main-is:              pubkeyhash-json-encoder.hs
---   ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
---   build-depends:        cardano-api
---                       , plutus-ledger
---                       , plutus-ledger-api
---                       , plutus-tx
---                       , aeson
-
-
-
--- executable compare-hash-v4
---   import:               base, project-config
---   hs-source-dirs:       app
---   main-is:              compare-hash-v4.hs
---   ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
---   build-depends:        cardano-api
---                       , plutus-ledger
---                       , plutus-ledger-api
---                       , plutus-tx
---                       , aeson
---                       , plutus-lobster
---                       , bytestring
---                       , transformers-except
---                       , cardano-cli
---                       , text
+  build-depends:        aeson
+                      , base
+                      , bytestring

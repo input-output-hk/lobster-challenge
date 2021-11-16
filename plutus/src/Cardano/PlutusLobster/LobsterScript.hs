@@ -16,15 +16,21 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Cardano.PlutusLobster.LobsterScript
-  ( apiLobsterScript
+  ( pkhFromDatum
+  , apiLobsterScript
   , apiRequestScript
+  , apiEndScript
   , LobsterParams (..)
+  , RequestParams (..)
   , mkLobsterValidator
   , typedLobsterValidator
   , lobsterValidator
   , typedRequestValidator
   , requestValidator
   , requestValidatorHash
+  , typedEndValidator
+  , endValidator
+  , endValidatorHash
   ) where
 
 import           Cardano.Api.Shelley      (PlutusScript (..), PlutusScriptV1)
@@ -47,6 +53,7 @@ data LobsterParams = LobsterParams
     , lpNFT            :: !AssetClass
     , lpCounter        :: !AssetClass
     , lpFinished       :: !AssetClass
+    , lpTicketSymbol   :: !CurrencySymbol
     , lpNameCount      :: !Integer
     , lpDeadline       :: !POSIXTime
     , lpBatcher        :: !PubKeyHash
@@ -55,6 +62,14 @@ data LobsterParams = LobsterParams
 PlutusTx.makeLift ''LobsterParams
 
 {- HLINT ignore "Avoid lambda" -}
+
+{-# INLINEABLE pkhFromDatum #-}
+pkhFromDatum :: DatumHash -> [(DatumHash, Datum)] -> Maybe PubKeyHash
+pkhFromDatum _ [] = Nothing
+pkhFromDatum dh ((dh', Datum d) : tl)
+  | dh == dh' = PlutusTx.fromBuiltinData d
+  | otherwise = pkhFromDatum dh tl
+
 
 {-# INLINEABLE scriptInput #-}
 scriptInput :: ScriptContext -> TxOut
@@ -93,7 +108,6 @@ isScriptCredential ctx o_s =
 {-# INLINEABLE isSignedBy #-}
 isSignedBy :: TxInfo -> PubKeyHash -> Bool
 isSignedBy txInfo pk = go pk (txInfoSignatories txInfo)
-
   where
     go :: PubKeyHash -> [PubKeyHash] -> Bool
     go _ [] = False
@@ -101,9 +115,54 @@ isSignedBy txInfo pk = go pk (txInfoSignatories txInfo)
      | k == p = True
      | otherwise = go k tl
 
+
+
+data RequestParams = RequestParams
+    { rpNFT            :: !AssetClass -- should be same NFT AssetClass as LobsterParams : to guarantee uniqueness only
+    , rTicketSymbol    :: !CurrencySymbol -- currency symbol for ticket token
+    , rpBatcher        :: !PubKeyHash -- should be same pubKeyHash as LobsterParams
+    , rEndHash         :: !ValidatorHash --- hash of end script to which order receipt should be sent
+    } deriving Show
+
+PlutusTx.makeLift ''RequestParams
+
 {-# INLINABLE mkRequestValidator #-}
-mkRequestValidator :: AssetClass -> PubKeyHash -> Integer -> ScriptContext -> Bool
-mkRequestValidator _ _ _ _ = True
+-- several uxtos sitting at request script can be consumed in one transaction
+-- but there cannot be two utxos for the same pubkeyhash datum. Otherwise,
+-- batcher can claim fee for more than one vote performed by same voter by
+-- providing only one minted receipt.
+mkRequestValidator :: RequestParams -> PubKeyHash -> Integer -> ScriptContext -> Bool
+mkRequestValidator (RequestParams _ tkSymbol pkBatcher eHash) pkVoter _ ctx@(ScriptContext ctxInfo _) =
+ traceIfFalse "Wrong batcher" (isSignedBy ctxInfo pkBatcher) &&
+ traceIfFalse "Only one utxo per pubkeyhash expected in input" (onlyOneUtxoPerPKH ctx ctxInfo pkVoter (txInfoInputs ctxInfo) 0) &&
+ traceIfFalse "One ticket token per pubkeyhash expected in input" (oneInputToken ctxInfo tkSymbol) &&
+ traceIfFalse "Ticket Token sent to burning script" (ticketTokenToEndScript ctxInfo eHash tkSymbol)
+
+ where
+   oneInputToken :: TxInfo -> CurrencySymbol -> Bool
+   oneInputToken t_info cSymbol =
+     ( valueOf (valueSpent t_info) cSymbol ticketToken ) == 1
+
+   ticketToken :: TokenName
+   ticketToken = TokenName (getPubKeyHash pkVoter)
+
+
+   ticketTokenToEndScript :: TxInfo -> ValidatorHash -> CurrencySymbol -> Bool
+   ticketTokenToEndScript t_info vh cSymbol =
+     ( valueOf (valueLockedBy t_info vh) cSymbol ticketToken ) == 1
+
+   onlyOneUtxoPerPKH :: ScriptContext -> TxInfo -> PubKeyHash -> [TxInInfo] -> Integer -> Bool
+   onlyOneUtxoPerPKH _ _ _ [] nb = nb == 1
+   onlyOneUtxoPerPKH sc t_info pkh ((TxInInfo _ (TxOut (Address (ScriptCredential s) _) _ (Just dh))) : tl) nb
+     | (isScriptCredential sc s) =
+       case pkhFromDatum dh (txInfoData t_info) of
+         Nothing -> traceError "Invalid public key hash datum !!!"
+         Just k -> if k == pkh then
+                     onlyOneUtxoPerPKH sc t_info pkh tl (nb + 1)
+                   else
+                     onlyOneUtxoPerPKH sc t_info pkh tl nb
+     | otherwise = traceError "Only request script expected as input !!!"
+   onlyOneUtxoPerPKH sc t_info pkh (_ : tl) nb = onlyOneUtxoPerPKH sc t_info pkh tl nb
 
 
 data Requesting
@@ -111,7 +170,7 @@ instance Scripts.ValidatorTypes Requesting where
     type instance DatumType Requesting = PubKeyHash
     type instance RedeemerType Requesting = Integer
 
-typedRequestValidator :: AssetClass -> Scripts.TypedValidator Requesting
+typedRequestValidator :: RequestParams -> Scripts.TypedValidator Requesting
 typedRequestValidator rp = Scripts.mkTypedValidator @Requesting
     ($$(PlutusTx.compile [|| mkRequestValidator ||])
         `PlutusTx.applyCode` PlutusTx.liftCode rp)
@@ -119,20 +178,55 @@ typedRequestValidator rp = Scripts.mkTypedValidator @Requesting
   where
     wrap = Scripts.wrapValidator @PubKeyHash @Integer
 
-requestValidator :: AssetClass -> Validator
+requestValidator :: RequestParams -> Validator
 requestValidator = Scripts.validatorScript . typedRequestValidator
 
-requestValidatorHash :: AssetClass -> ValidatorHash
+requestValidatorHash :: RequestParams -> ValidatorHash
 requestValidatorHash = Scripts.validatorHash . typedRequestValidator
 
-requestScript :: AssetClass -> Plutus.Script
+requestScript :: RequestParams -> Plutus.Script
 requestScript = Ledger.unValidatorScript . requestValidator
 
-requestScriptAsShortBs :: AssetClass -> SBS.ShortByteString
+requestScriptAsShortBs :: RequestParams -> SBS.ShortByteString
 requestScriptAsShortBs = SBS.toShort . LB.toStrict . serialise . requestScript
 
-apiRequestScript :: AssetClass -> PlutusScript PlutusScriptV1
+apiRequestScript :: RequestParams -> PlutusScript PlutusScriptV1
 apiRequestScript = PlutusScriptSerialised . requestScriptAsShortBs
+
+
+
+-- parameterized with NFT AssetClass used for LobsterScript to guarantee uniqueness
+{-# INLINABLE mkEndValidator #-}
+mkEndValidator :: AssetClass -> Integer -> Integer -> ScriptContext -> Bool
+mkEndValidator _ _ _ _ = False -- burning address
+
+data Ending
+instance Scripts.ValidatorTypes Ending where
+    type instance DatumType Ending = Integer
+    type instance RedeemerType Ending = Integer
+
+typedEndValidator :: AssetClass -> Scripts.TypedValidator Ending
+typedEndValidator ac = Scripts.mkTypedValidator @Ending
+    ($$(PlutusTx.compile [|| mkEndValidator ||])
+        `PlutusTx.applyCode` PlutusTx.liftCode ac)
+    $$(PlutusTx.compile [|| wrap ||])
+  where
+    wrap = Scripts.wrapValidator @Integer @Integer
+
+endValidator :: AssetClass -> Validator
+endValidator = Scripts.validatorScript . typedEndValidator
+
+endValidatorHash :: AssetClass -> ValidatorHash
+endValidatorHash = Scripts.validatorHash . typedEndValidator
+
+endScript :: AssetClass -> Plutus.Script
+endScript = Ledger.unValidatorScript . endValidator
+
+endScriptAsShortBs :: AssetClass -> SBS.ShortByteString
+endScriptAsShortBs = SBS.toShort . LB.toStrict . serialise . endScript
+
+apiEndScript :: AssetClass -> PlutusScript PlutusScriptV1
+apiEndScript = PlutusScriptSerialised . endScriptAsShortBs
 
 
 expectedDatumHash :: DatumHash
@@ -141,8 +235,8 @@ expectedDatumHash = DatumHash $ toBuiltin $ bytes "03170a2e7597b7b7e3d84c05391d1
 
 {-# INLINABLE mkLobsterValidator #-}
 mkLobsterValidator :: DatumHash -> LobsterParams -> Integer -> Integer -> ScriptContext -> Bool
-mkLobsterValidator h (LobsterParams seed nftAC cntAC endAC n_count deadline pkBatcher) d _ ctx@(ScriptContext ctxInfo _) =
-  traceIfFalse "Wrong Batcher" (isSignedBy ctxInfo pkBatcher)                             &&
+mkLobsterValidator h (LobsterParams seed nftAC cntAC endAC tkSymbol n_count deadline pkBatcher) d _ ctx@(ScriptContext ctxInfo _) =
+  traceIfFalse "Wrong batcher" (isSignedBy ctxInfo pkBatcher)                             &&
   if getInValue nftAC == 1 then
     traceIfFalse "Input datum must be zero"  (d == 0)                                     &&
     traceIfFalse "Output datum must be zero" (txOutDatumHash (ownOutput ctx) == Just h)   &&
@@ -150,7 +244,7 @@ mkLobsterValidator h (LobsterParams seed nftAC cntAC endAC n_count deadline pkBa
     traceIfFalse "already finished"          (oldFinished == 0)                           &&
      if | to deadline `contains` valRange ->
            traceIfFalse "not yet finished"   (newFinished == 0)                           &&
-           traceIfFalse "counter mismatched" ( nbCounters == newCounter)
+           traceIfFalse "counter mismatched" ( nbCounters == newCounter )
 
 
         | from deadline `contains` valRange ->
@@ -165,11 +259,19 @@ mkLobsterValidator h (LobsterParams seed nftAC cntAC endAC n_count deadline pkBa
 
   where
 
+    -- checks counter and ticket tokens
     getCounters :: AssetClass -> Integer -> [TxInInfo] -> Integer
     getCounters _ acc [] = acc
-    getCounters counterAC acc ((TxInInfo _ ot) : tl) =
-      let !c = assetClassValueOf (txOutValue ot) counterAC in
-        getCounters counterAC (acc + c) tl
+    getCounters counterAC acc ((TxInInfo _ (TxOut (Address (PubKeyCredential k) _) v _)) : tl) =
+      let !c = assetClassValueOf v counterAC in
+      let !t = valueOf v tkSymbol (TokenName (getPubKeyHash k)) in
+        if t == 1 then
+          getCounters counterAC (acc + c) tl
+        else
+          traceError "Ticket Token not present !!!"
+
+    getCounters counterAC acc (_ : tl) = getCounters counterAC acc tl
+
 
     inVal :: Value
     !inVal = txOutValue (scriptInput ctx)
@@ -201,7 +303,7 @@ mkLobsterValidator h (LobsterParams seed nftAC cntAC endAC n_count deadline pkBa
     !valRange = (txInfoValidRange ctxInfo)
 
     nbCounters :: Integer
-    nbCounters = getCounters cntAC 0 (txInfoInputs ctxInfo)
+    nbCounters = (getCounters cntAC 0 (txInfoInputs ctxInfo)) + oldCounter
 
 
 data LobsterNaming

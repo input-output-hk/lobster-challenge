@@ -13,16 +13,19 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Cardano.PlutusLobster.LobsterPoliciesV4
+module Cardano.PlutusLobster.LobsterPolicies
   ( apiNFTMintScript
   , apiOtherMintScript
+  , apiTicketMintScript
   , PolicyParams (..)
   , PolicyMintingAction (..)
   , nftTokenName
   , counterTokenName
-  , votesTokenName
+  , finishedTokenName
   , otherPolicy
   , otherPolicyHash
+  , ticketPolicy
+  , ticketPolicyHash
   ) where
 
 import           Cardano.Api.Shelley   (PlutusScript (..), PlutusScriptV1)
@@ -41,6 +44,8 @@ import qualified PlutusTx
 import           PlutusTx.Prelude      hiding (Semigroup (..), unless)
 import           Plutus.V1.Ledger.Credential (Credential (..))
 import           Prelude               (Show)
+import           Cardano.PlutusLobster.LobsterScript as LobsterScript
+
 {- HLINT ignore "Avoid lambda" -}
 
 {-# INLINABLE mkNFTPolicy #-}
@@ -59,10 +64,10 @@ mkNFTPolicy tn utxo _ ctx = traceIfFalse "UTxO not consumed"   hasUTxO          
         [(_, tn', amt)] -> tn' == tn && amt == 1
         _               -> False
 
-nftTokenName, counterTokenName, votesTokenName :: TokenName
+nftTokenName, counterTokenName, finishedTokenName :: TokenName
 nftTokenName = "LobsterNFT"
 counterTokenName = "LobsterCounter"
-votesTokenName = "LobsterVotes"
+finishedTokenName = "LobsterFinished"
 
 nftPolicy :: TxOutRef -> TScripts.MintingPolicy
 nftPolicy utxo = mkMintingPolicyScript $
@@ -87,47 +92,61 @@ apiNFTMintScript = PlutusScriptSerialised . SBS.toShort . LB.toStrict . nftScrip
 
 -- | Action used when minting counters and votes tokens
 data PolicyMintingAction
-  = MintCounters
-  | MintVotes
+  = MintCounters -- to mint counter tokens when submitting votes
+  | MintFinish  -- to mint finish token when vote deadline reached
+  | MintReceipt -- to mint receipt token when vote processed successfully
   deriving (Show, Generic, FromJSON, ToJSON)
 
 instance Eq PolicyMintingAction where
   {-# INLINABLE (==) #-}
   MintCounters == MintCounters = True
-  MintVotes == MintVotes = True
+  MintFinish == MintFinish = True
   _ == _ = False
 
 
 data PolicyParams = PolicyParams
-   { pCounterTokenName  :: !TokenName
-    , pVotesTokenName   :: !TokenName
-    , pFees             :: !Integer
-    , pRequestHash      :: !ValidatorHash
-    , pNFT              :: !AssetClass
+   {  pCounterTokenName   :: !TokenName
+    , pFinishedTokenName  :: !TokenName
+    , pSubmitFees         :: !Integer -- min fee required by batcher to submit request
+    , pCollectFees        :: !Integer -- min fee collected by batcher after successful process
+    , pRequestHash        :: !ValidatorHash
+    , pNFT                :: !AssetClass
+    , pDeadline           :: !POSIXTime
    } deriving Show
+-- The sum of pSumbitFees + pCollectFees corresponds to the fees claimed by batcher.
 
 PlutusTx.makeLift ''PolicyParams
 
+
+{-# INLINABLE lovelace #-}
+lovelace :: AssetClass
+lovelace = AssetClass (adaSymbol, adaToken)
+
 {-# INLINABLE mkOtherPolicy #-}
 mkOtherPolicy :: PolicyParams -> BuiltinData -> ScriptContext -> Bool
-mkOtherPolicy (PolicyParams tkC tkV fees rHash nftAC) redeemer (ScriptContext (TxInfo txIn txOuts _ txMint _ _ _ txSig txData _) (Minting cs)) =
+mkOtherPolicy (PolicyParams tkCount tkFinish sFees cFees rHash nftAC deadline) redeemer
+              (ScriptContext (TxInfo txIn txOuts _ txMint _ _ valRange txSig txData _) (Minting cs)) =
   case action redeemer of
    MintCounters ->
-     let cAC = AssetClass (cs, tkC)
-         c = assetClassValueOf txMint cAC
-         dh = requestScriptDatum rHash txOuts
+     let counterAC = AssetClass (cs, tkCount)
+         c = assetClassValueOf txMint counterAC
+         dh = requestScriptDatum rHash cFees txOuts -- trigger error if request script not found in output with collect fee
      in
        c >= 1 && -- valid counter conditions
        c <= 100 &&
-       traceIfFalse "Token/Fee not sent to submitter !!!" (tokenAndFeeToSubmitter cAC txSig fees c txOuts) &&
-       ( case getPubKeyHash dh txData of
+       to deadline `contains` valRange && -- deadline not expired
+       traceIfFalse "Token/Fee not sent to submitter !!!" (tokenAndFeeToSubmitter counterAC txSig sFees c txOuts) &&
+       ( case LobsterScript.pkhFromDatum dh txData of
            Nothing -> traceIfFalse "Invalid Public Key Hash !!!" False
            Just pk -> [pk] == txSig
-       )
+       ) -- pubkeyhash sent to request script
 
-   MintVotes ->
-     onlyMintedVoteTokens cs tkV txMint && -- only minting votes token
-     existsLobsterNFT nftAC txIn -- lobster nft present as input
+   MintFinish ->
+     onlyOneMintedFinishToken cs tkFinish txMint && -- only one finish token minted
+     existsLobsterNFT nftAC txIn -- lobster nft present as input and only executed by batcher (i.e., enforced by validator script)
+
+   MintReceipt ->
+     existsLobsterNFT nftAC txIn -- lobster nft present as input and only executed by batcher (i.e., enforced by validator script)
 
   where
     action :: BuiltinData -> PolicyMintingAction
@@ -139,30 +158,25 @@ mkOtherPolicy (PolicyParams tkC tkV fees rHash nftAC) redeemer (ScriptContext (T
     tokenAndFeeToSubmitter :: AssetClass -> [PubKeyHash] -> Integer -> Integer -> [TxOut] -> Bool
     tokenAndFeeToSubmitter _ _ _ _ [] = False
     tokenAndFeeToSubmitter counterAC sig_l p_fees nbC ((TxOut (Address (PubKeyCredential k) _) v _) : tl)
-      | sig_l == [k] && (assetClassValueOf v counterAC) == nbC && (assetClassValueOf v (AssetClass (adaSymbol, adaToken))) >= p_fees = True
+      | sig_l == [k] && (assetClassValueOf v counterAC) == nbC && (assetClassValueOf v lovelace) >= p_fees = True
       | otherwise = tokenAndFeeToSubmitter counterAC sig_l p_fees nbC tl
     tokenAndFeeToSubmitter counterAC sig_l p_fees nbC (_ : tl) = tokenAndFeeToSubmitter counterAC sig_l p_fees nbC tl
 
-    getPubKeyHash :: DatumHash -> [(DatumHash, Datum)] -> Maybe PubKeyHash
-    getPubKeyHash _ [] = Nothing
-    getPubKeyHash dh ((dh', Datum d) : tl)
-      | dh == dh' = PlutusTx.fromBuiltinData d
-      | otherwise = getPubKeyHash dh tl
 
-    requestScriptDatum :: ValidatorHash -> [TxOut] -> DatumHash
-    requestScriptDatum _ [] = traceError "Request Script Output Expected !!"
-    requestScriptDatum rh ((TxOut (Address (ScriptCredential s) _) _ (Just dh)) : _)
-      | s == rh = dh -- only one script output expected
+    requestScriptDatum :: ValidatorHash -> Integer -> [TxOut] -> DatumHash
+    requestScriptDatum _ _ [] = traceError "Request Script Output Expected !!"
+    requestScriptDatum rh c_fees ((TxOut (Address (ScriptCredential s) _) v (Just dh)) : _)
+      | s == rh && (assetClassValueOf v lovelace) >= c_fees = dh -- only one script output expected
       | otherwise = traceError "Only one script output expected !!!"
-    requestScriptDatum rh (_ : tl) = requestScriptDatum rh tl
+    requestScriptDatum rh c_fees (_ : tl) = requestScriptDatum rh c_fees tl
 
 
-    onlyMintedVoteTokens :: CurrencySymbol -> TokenName -> Value -> Bool
-    onlyMintedVoteTokens cur tn (Value mp) =
+    onlyOneMintedFinishToken :: CurrencySymbol -> TokenName -> Value -> Bool
+    onlyOneMintedFinishToken cur tn (Value mp) =
       case Map.lookup cur mp of
         Nothing -> False
         Just mp' -> case Map.toList mp' of
-                      [(tn', i)] -> tn' == tn && i > 0
+                      [(tn', i)] -> tn' == tn && i == 1
                       _ -> False
 
     existsLobsterNFT :: AssetClass -> [TxInInfo] -> Bool
@@ -194,4 +208,44 @@ otherScriptAsShortBs = SBS.toShort . LB.toStrict . serialise . otherValidator
 apiOtherMintScript :: PolicyParams -> PlutusScript PlutusScriptV1
 apiOtherMintScript = PlutusScriptSerialised . otherScriptAsShortBs
 
+
+-- need to change for production code
 PlutusTx.unstableMakeIsData ''PolicyMintingAction
+
+
+-- policy used to generate ticket request with tokenName set to pubKeyHash of miner
+-- parameterized with NFT AssetClass used for LobsterScript
+{-# INLINABLE mkTicketPolicy #-}
+mkTicketPolicy :: AssetClass -> BuiltinData -> ScriptContext -> Bool
+mkTicketPolicy _ _ (ScriptContext (TxInfo _ _ _ txMint _ _ _ txSig _ _) _) =
+   traceIfFalse "Invalid ticket" (checkMintedTicket txMint txSig)
+
+   where
+     checkMintedTicket :: Value -> [PubKeyHash] -> Bool
+     checkMintedTicket v [pk] =
+       case flattenValue v of
+         [(_, tn, amt)] -> (unTokenName tn == getPubKeyHash pk) && amt == 1
+         _              -> False
+     checkMintedTicket _ _ = traceError "Only one signatory expected !!!"
+
+
+ticketPolicy :: AssetClass -> TScripts.MintingPolicy
+ticketPolicy ac = mkMintingPolicyScript $
+              $$(PlutusTx.compile [|| \a' -> TScripts.wrapMintingPolicy $ mkTicketPolicy a' ||])
+              `PlutusTx.applyCode` PlutusTx.liftCode ac
+
+
+ticketPolicyHash :: AssetClass ->  Scripts.MintingPolicyHash
+ticketPolicyHash = Scripts.mintingPolicyHash . ticketPolicy
+
+ticketPlutusScript :: AssetClass -> Script
+ticketPlutusScript = unMintingPolicyScript . ticketPolicy
+
+ticketValidator :: AssetClass -> Validator
+ticketValidator = Validator . ticketPlutusScript
+
+ticketScriptAsShortBs :: AssetClass -> SBS.ShortByteString
+ticketScriptAsShortBs = SBS.toShort . LB.toStrict . serialise . ticketValidator
+
+apiTicketMintScript :: AssetClass -> PlutusScript PlutusScriptV1
+apiTicketMintScript = PlutusScriptSerialised . ticketScriptAsShortBs
