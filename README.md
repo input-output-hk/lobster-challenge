@@ -45,7 +45,7 @@ The overall architecture for this new version of the lobster contract is as foll
 
 ### Vote Processing
   - The batcher inspects the UTXOs sitting at the **_request_** script address to collect the counter and ticket tokens at the voters' public key addresses and to build the aggregated transaction. Note that if no counter token (respectively ticket token) is present at the corresponding public key address or the **_submit fees_** are insufficient, the vote request is considered as void.
-  - The UTXOS sitting at the **_request_** script are not consumed by the aggregated transaction. Only the UTXOS at the voters' public key addresses are consumed. At this stage, the batcher can also collect the _**submit fees** but not the __collect fees__.
+  - The UTXOS sitting at the **_request_** script are not consumed by the aggregated transaction. Only the UTXOS at the voters' public key addresses are consumed. At this stage, the batcher can also collect the **_submit fees_** but not the **_collect fees_**.
   - Voters are also notified to sign the aggregated transaction before submission
   - When the aggregated transaction is submitted, the **_lobster_** script checks that each UTXO having counter tokens must also have an associated ticket token containing the public key hash of the voter and that the counter tokens sitting at the script address are updated accordingly.
 
