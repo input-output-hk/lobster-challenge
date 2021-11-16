@@ -16,7 +16,7 @@ into the list of names to pick the lobster name.
 This repository corresponds to a first viable solution addressing concurrency using a batching pattern.
 Here, instead of locking voting requests in an intermediate **_request_** script, users directly submit their votes to their own public key address.
 The intermediate **_request_** script is only used to notify the presence of pending votes and to lock transaction fees that can afterwards be claimed by the _batcher_. When aggregating votes in one single transaction, the batcher only inspects the UTXOS sitting at the **_request_** script to collect the respective tokens at the voters's public key addresses. This avoids triggering the execution of the **_request_** script for each pending votes.
-However, users are required to sign the aggregated transaction to authorize the spending of voting orders and should therefore be online to participate.
+However, users are required to sign the aggregated transaction to authorize the spending of voting orders. They should therefore be online to participate.
 
 ## Repository Organisation
 In the repository, policy scripts are specified in file LobsterPolicies.hs while validator scripts are specified in LobsterScript.hs
