@@ -94,14 +94,12 @@ apiNFTMintScript = PlutusScriptSerialised . SBS.toShort . LB.toStrict . nftScrip
 data PolicyMintingAction
   = MintCounters -- to mint counter tokens when submitting votes
   | MintFinish  -- to mint finish token when vote deadline reached
-  | MintReceipt -- to mint receipt token when vote processed successfully
   deriving (Show, Generic, FromJSON, ToJSON)
 
 instance Eq PolicyMintingAction where
   {-# INLINABLE (==) #-}
   MintCounters == MintCounters = True
   MintFinish == MintFinish = True
-  MintReceipt == MintReceipt = True
   _ == _ = False
 
 
@@ -144,9 +142,6 @@ mkOtherPolicy (PolicyParams tkCount tkFinish sFees cFees rHash nftAC deadline) r
 
    MintFinish ->
      onlyOneMintedFinishToken cs tkFinish txMint && -- only one finish token minted
-     existsLobsterNFT nftAC txIn -- lobster nft present as input and only executed by batcher (i.e., enforced by validator script)
-
-   MintReceipt ->
      existsLobsterNFT nftAC txIn -- lobster nft present as input and only executed by batcher (i.e., enforced by validator script)
 
   where
