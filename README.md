@@ -63,4 +63,11 @@ The overall architecture for this new version of the lobster contract is as foll
      - The ticket tokens are sent to the **_end_** script to be locked forever (e.g., burning).
      
 ### Finializing Votes
-TBD
+  - Once the voting deadline is reached, the batcher submit a final transaction to get the result and generate the final amount of counter tokens. This is performed by adding a secret random number (generated when deploying the lobster contract) to the total modulo the number of names in the ballot list.
+  - The **_lobster_** script also checks that the finished token is properly minted and is present at the script output.
+
+
+### Code
+  The Plutus code can be found [here](https://github.com/input-output-hk/lobster-challenge/tree/concurrency-multisig/plutus/src/Cardano/PlutusLobster), where you will find the various aformentioned minting policies and validation scripts.
+
+  The code can be built with `cabal build`.
