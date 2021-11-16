@@ -26,7 +26,7 @@ The following executables are also produced when building the project:
       - The **_lobster_** script: main script containing the voting logic
       - The **_request_** script: script use to notify pending votes and to collect fees
       - The **_end_** script: script for burning ticket tokens once the batcher has collected fees for processed votes
-      - The **_minting _counter and finished tokens_** policy script: for minting the counter tokens representing votes and the finished token once votes are tallied
+      - The **_minting counter and finished tokens_** policy script: for minting the counter tokens representing votes and the finished token once votes are tallied
       - The **_ticket_** policy script: for minting ticket tokens required by users for submitting votes
 
 ## Overall Architecture
