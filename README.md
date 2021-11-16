@@ -13,15 +13,23 @@ In the end, we will reveal our own "secret random" number, add it to the total p
 and use the result (after taking the remainder after division by the number of available names) as an index
 into the list of names to pick the lobster name.
 
-## Native Tokens
+This repository corresponds to a first viable solution addressing concurrency using a batching pattern.
+Here, instead of locking voting requests in an intermediate **_request_** script, users directly submit their votes to their own public key address.
+The intermediate **_request_** script is only used to notify the presence of pending votes and to lock transaction fees that can afterwards be claimed by the _batcher_. When aggregating votes in one single transaction, the batcher only inspects the UTXOS sitting at the **_request_** script to collect the respective tokens at the voters's public key addresses. This avoids triggering the execution of the **_request_** script for each pending votes.
+However, users are required to sign the aggregated transaction to authorize the spending of voting orders and should therefore be online to participate.
 
-We use three distinct native tokens to help us name the lobster:
+## Repository Organisation
+In the repository, policy scripts are specified in file LobsterPolicies.hs while validator scripts are specified in LobsterScript.hs
+The following executables are produced when building the project:
+ - **plutus-lobster-tokens**: to be used for generating lobster NFT policy script 
+ - **plutus-lobster**: to be used for generating:
+     --  **_lobster_** script (main contract), the **_request_** script (used to submit votes), the **_end_** script ( used to burn ticket tokens when the batcher claims fees for processed votes), the **_minting _counter and finished tokens_** policy script (used to mint counter tokens representing votes and to mint the finished token once votes are tailled) and the **_ticket_** policy script
+The overall architecture for this new version of the lobster contract is as follows:
 
-| Policy                                     | Policy Id                                                  | Token Name       | Purpose                             |
-| ------------------------------------------ | ---------------------------------------------------------- | ---------------- | ----------------------------------- |
-| [script](scripts/nft-mint-policy.plutus)   | `cc7888851f0f5aa64c136e0c8fb251e9702f3f6c9efcf3a60a54f419` | `LobsterNFT`     | Identifies the relevant UTxO.       |
-| [script](scripts/other-mint-policy.plutus) | `fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50` | `LobsterCounter` | Stores the current "random" number. |
-| [script](scripts/other-mint-policy.plutus) | `fda1b6b487bee2e7f64ecf24d24b1224342484c0195ee1b7b943db50` | `LobsterVotes`   | Counts the number of votes.         |
+
+## Deploying the Lobster contract
+An NFT token is first minted using the **_nftPolicy_** script 
+
 
 The first one, `LobsterNFT`, is an NFT and used to identified the "correct" UTxO "sitting" at the contract address.
 (Recall that _anybody_ can send _anything_ _anywhere_ at _anytime_, so we can't prevent people from creating other UTxO's at the script address.
