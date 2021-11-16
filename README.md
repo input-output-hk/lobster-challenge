@@ -43,13 +43,24 @@ The overall architecture for this new version of the lobster contract is as foll
   - For the lobster contract, the batcher fees are split into two categories and are referred respectively as **_submit fees_** and **_collect fees_**. The _submit fees_ are directly sent to the users's public key address together with the counter and ticket tokens. As for the _collect fees_ they are locked at the **_request_** script as described below.
   - The notification of a pending vote is done by submitting the voter's public key hash and the **_collect fees_** to the **_request_** script.
 
-### Vote Processing
+### Processing Votes
   - The batcher inspects the UTXOs sitting at the **_request_** script address to collect the counter and ticket tokens at the voters' public key addresses and to build the aggregated transaction. Note that if no counter token (respectively ticket token) is present at the corresponding public key address or the **_submit fees_** are insufficient, the vote request is considered as void.
   - The UTXOS sitting at the **_request_** script are not consumed by the aggregated transaction. Only the UTXOS at the voters' public key addresses are consumed. At this stage, the batcher can also collect the **_submit fees_** but not the **_collect fees_**.
-  - Voters are also notified to sign the aggregated transaction before submission
-  - When the aggregated transaction is submitted, the **_lobster_** script checks that each UTXO having counter tokens must also have an associated ticket token containing the public key hash of the voter and that the counter tokens sitting at the script address are updated accordingly.
+  - Voters are also required to sign the aggregated transaction before its submission.
+  - When the aggregated transaction is submitted, the **_lobster_** script checks that:
+      - The NFT lobster token sits at the script output;
+      - The batcher has signed the aggregated transaction;
+      - Each consumed UTXO having counter tokens also has an associated ticket token containing the public key hash of the voter (i.e., pub key hash referenced by the UTXO);
+      - The number of counter tokens sitting at the script output includes the tailled votes; and
+      - Voting deadline is still valid
+   - The ticket tokens for the processed votes are collected by the batcher for claiming the additional fees sitting at the **_request_** script.
 
 ### Claiming Fees
-TBD
+  - Once the batcher has collected the ticket tokens when processing the votes via the **_lobster_** script, he can claim the corresponding **_collect fees_** locked at the **_request_** script. When submitting the _claim_ transaction, the following checks are performed by the **_request_** script:
+     - The transaction is properly signed by the batcher.
+     - There does not exist two or more UTXOs at the script input for the same public key hash (i.e., residing as Datum). This check is essential as it ensures that the batcher cannot provide only one ticket token to claim fees for more than one vote submitted by the same user and within a single transaction. Hence, if a user has submitted several votes, the batcher can only claim the respective fees via seperate transaction. Nevertheless, claiming fees for more than one vote within a single transaction is possible only when the aforementioned condition is satisfied.
+     - A ticket token is present as input for each consuming UTXO.
+     - The ticket tokens are sent to the **_end_** script to be locked forever (e.g., burning).
+     
 ### Finializing Votes
 TBD
