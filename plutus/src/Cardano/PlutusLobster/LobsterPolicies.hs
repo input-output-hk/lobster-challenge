@@ -101,6 +101,7 @@ instance Eq PolicyMintingAction where
   {-# INLINABLE (==) #-}
   MintCounters == MintCounters = True
   MintFinish == MintFinish = True
+  MintReceipt == MintReceipt = True
   _ == _ = False
 
 
