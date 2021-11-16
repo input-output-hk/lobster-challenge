@@ -1,0 +1,12 @@
+cradle:
+  cabal:
+    - path: "./src"
+      component: "lib:plutus-lobster"
+    - path: "./app/plutus-lobster-v1.hs"
+      component: "exe:plutus-lobster-v1"
+    - path: "./app/plutus-lobster-v2.hs"
+      component: "exe:plutus-lobster-v2"
+    - path: "./app/plutus-lobster-names.hs"
+      component: "exe:plutus-lobster-names"
+    - path: "./app/plutus-lobster-tokens.hs"
+      component: "exe:plutus-lobster-tokens"
