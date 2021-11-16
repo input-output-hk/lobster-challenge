@@ -68,6 +68,6 @@ The overall architecture for this new version of the lobster contract is as foll
 
 
 ### Code
-  The Plutus code can be found [here](https://github.com/input-output-hk/lobster-challenge/tree/concurrency-multisig/plutus/src/Cardano/PlutusLobster), where you will find the various aformentioned minting policies and validation scripts.
+  The Plutus code can be found [here](https://github.com/input-output-hk/lobster-challenge/tree/concurrency-multisig/plutus/src/Cardano/PlutusLobster), where you will find the various aforementioned minting policies and validation scripts.
 
   The code can be built with `cabal build`.
